@@ -38,6 +38,9 @@ td.num,th.num{text-align:right;white-space:nowrap}
 .lm td{cursor:pointer}
 .lm:active td{background:var(--bg)}
 .sta{display:none;color:var(--dim)}
+.t1{color:#e11d48}.t2{color:#6d28d9}
+th.t1,th.t2{background:var(--bg)}
+@media (max-width:599px){table{font-size:14px}th,td{padding:8px 6px}}
 .sub{display:block;color:var(--dim);font-size:12px}
 @media (min-width:600px){.sta{display:table-cell}.sub{display:none}}
 tr.half td{color:var(--dim)}
@@ -91,20 +94,21 @@ details.manual>summary{cursor:pointer;color:var(--dim);font-size:14px;padding:4p
     <button id="btn-fit" class="alt" type="button">코스 전체 보기</button>
   </div>
   <div id="map" role="application" aria-label="코스 지도"></div>
-  <p class="note" style="margin-top:6px">코스 위 시각은 진영 계획(07:33 출발) 기준입니다</p>
+  <p class="note" style="margin-top:6px"><span class="t1">빨강 진영</span> · <span class="t2">보라 기영</span> 예상 시각 (기록이 들어오면 실제 페이스로 갱신)</p>
   <p class="status" id="plan-line"></p>
   <p class="status me" id="me-line" hidden></p>
 
   <h2>응원 포인트</h2>
   <p class="note" style="margin-bottom:8px">청계천로는 두 번 지나갑니다(동쪽으로 5~8.6km, 다시 서쪽으로 8.6~12km), 종로는 동쪽으로 13~17km — 화살표 방향을 보세요</p>
   <table>
-    <thead><tr><th>장소</th><th class="num">km</th><th class="num">예상 시각</th><th class="sta">가까운 역</th></tr></thead>
+    <thead><tr><th>장소</th><th class="num">km</th><th class="num t1">진영</th><th class="num t2">기영</th><th class="sta">가까운 역</th></tr></thead>
     <tbody id="lm-body"></tbody>
   </table>
 
   <h2>구간별 통과 예상</h2>
+  <p class="note" style="margin-bottom:8px">✓ 실제 통과 · 나머지는 최근 페이스로 예상(기록 전에는 계획)</p>
   <table>
-    <thead><tr><th>지점</th><th class="num">경과</th><th class="num">시각</th></tr></thead>
+    <thead><tr><th>지점</th><th class="num t1">진영</th><th class="num t2">기영</th></tr></thead>
     <tbody id="eta-body"></tbody>
   </table>
 
@@ -166,6 +170,21 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
   }
   return full;
 }
+function runnerEta(km, segs, startSec, splits) {   // splits: liveSplits() rows; -> {sec: clock seconds of day, kind: "actual"|"est"|"plan"}
+  if (!splits || !splits.length) return { sec: startSec + segTime(segs, km), kind: "plan" };
+  var s = splits.slice().sort(function (a, b) { return a.km - b.km; }), last = s[s.length - 1], i;
+  function passSec(x) { var c = x.clock ? parseTime(x.clock) : NaN; return isFinite(c) ? c : startSec + x.elapsed; }
+  for (i = 0; i < s.length; i++) if (Math.abs(s[i].km - km) < 0.01) return { sec: passSec(s[i]), kind: "actual" };
+  if (km < last.km) {                // passed, but between two recorded points: interpolate the actual passes
+    var a = { km: 0, t: startSec };
+    for (i = 0; i < s.length; i++) {
+      if (s[i].km < km) { a = { km: s[i].km, t: passSec(s[i]) }; continue; }
+      return { sec: a.t + (km - a.km) / (s[i].km - a.km) * (passSec(s[i]) - a.t), kind: "actual" };
+    }
+  }
+  var e = estimateKm(s, 0, 0);       // same pace rule as the live cards (last segment, else average)
+  return { sec: passSec(last) + (km - last.km) * e.pace, kind: "est" };
+}
 // PURE-END
 (function () {
   "use strict";
@@ -184,6 +203,12 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
   }
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   var startSec = D.start[0] * 3600 + D.start[1] * 60;
+  var PLAN_COLOR = "#64748b";        // neutral grey: 진영's plan marker must not clash with either runner colour
+  // per-runner plan: r1 follows PACES and the page start (startSec); r2 is an even 3:25:00 (205*60/42.195 s/km)
+  var PLANS = {
+    r1: { segments: PACES, start: "07:33", label: "진영 계획", cmp: "계획", color: PLAN_COLOR },
+    r2: { segments: [[0, FULL, 205 * 60 / FULL]], start: "07:37", label: "기영 계획", cmp: "계획(3:25)", color: "#c4b5fd" }
+  };
   function clockOf(sec) {            // wall clock of a planned elapsed time under the chosen start
     var m = roundEven((startSec + sec) / 60);
     return pad(Math.floor(m / 60) % 24) + ":" + pad(m % 60);
@@ -195,6 +220,22 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
   }
   function fmtKm(k) { return (Math.round(k * 10) / 10).toFixed(1); }
   function at(km) { return clockOf(planTime(km)); }
+  function clockSec(sec) { var m = roundEven(sec / 60); return pad(Math.floor(m / 60) % 24) + ":" + pad(m % 60); }
+  function runnerCtx(i) {            // per-runner plan segments, start and valid live splits
+    var key = "r" + (i + 1), plan = PLANS[key], rs = liveRunners(live), r = null;
+    rs.forEach(function (x) { if (x.key === key) r = x; });
+    if (!r && rs[i] && !rs[i].key) r = rs[i];
+    var lsc = r && r.start_clock ? parseTime(r.start_clock) : NaN;
+    return { segs: i === 0 ? PACES : plan.segments, start: isFinite(lsc) ? lsc : (i === 0 ? startSec : planStartSec(plan)), splits: r ? liveSplits(r) : [] };
+  }
+  function etaOf(km, c) { return runnerEta(km, c.segs, c.start, c.splits); }
+  function etaHtml(km, c, bold) {    // actual pass -> bold with a check mark
+    var e = etaOf(km, c), t = clockSec(e.sec);
+    return e.kind === "actual" && bold !== false ? "<b>" + t + " ✓</b>" : t;
+  }
+  function pairHtml(km) {            // "09:23 / 09:38" in 진영 red and 기영 violet
+    return '<span class="t1">' + etaHtml(km, runnerCtx(0)) + '</span> / <span class="t2">' + etaHtml(km, runnerCtx(1)) + "</span>";
+  }
 
   // ---- route helpers ----
   function posAt(km) {
@@ -274,7 +315,7 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
       else if (!on && map.hasLayer(g)) map.removeLayer(g);
     });
     kmMarks.forEach(function (m) {
-      if (m.kind === "half") { tipOf(m.layer, m.label + " · " + at(m.km), on, m.dir); }
+      if (m.kind === "half") { tipOf(m.layer, m.label + " · " + pairHtml(m.km), on, m.dir); }
     });
   }
   map.on("zoomend", syncDetail);
@@ -287,12 +328,13 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
 
   function refreshEnds() {           // short labels while zoomed out so they stay inside the map; place names at detail zoom
     var full = map.getZoom() >= DETAIL_ZOOM;
-    startPt.setTooltipContent((full ? "출발 · 광화문 광장 · " : "출발 · ") + clockOf(0));
-    finPt.setTooltipContent((full ? "도착 · 올림픽공원 · " : "도착 · ") + at(FULL));
+    var c0 = runnerCtx(0), c1 = runnerCtx(1);
+    startPt.setTooltipContent((full ? "출발 · 광화문 광장 · " : "출발 · ") + '<span class="t1">' + clockSec(c0.start) + '</span> / <span class="t2">' + clockSec(c1.start) + "</span>");
+    finPt.setTooltipContent((full ? "도착 · 올림픽공원 · " : "도착 · ") + pairHtml(FULL));
   }
   map.on("zoomend", refreshEnds);
   function refreshMarks() {
-    kmMarks.forEach(function (m) { m.layer.setTooltipContent(m.label + " · " + at(m.km)); });
+    kmMarks.forEach(function (m) { m.layer.setTooltipContent(m.label + " · " + pairHtml(m.km)); });
     refreshEnds();
   }
 
@@ -302,21 +344,21 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
   LMS.forEach(function (lm) {
     var tr = document.createElement("tr");
     tr.className = "lm";
-    tr.innerHTML = '<td></td><td class="num"></td><td class="num"></td><td class="sta"></td>';
+    tr.innerHTML = '<td></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="sta"></td>';
     tr.children[0].appendChild(document.createTextNode(lm.name));
     var sub = document.createElement("span"); sub.className = "sub"; sub.textContent = lm.station;
     tr.children[0].appendChild(sub);
     tr.children[1].textContent = fmtKm(lm.km);
-    tr.children[3].textContent = lm.station;
+    tr.children[4].textContent = lm.station;
     tr.addEventListener("click", function () {
       var c = [lm.lat, lm.lon];
       if (focus) map.removeLayer(focus);
       focus = L.circleMarker(c, { radius: 11, weight: 3, color: "#0f172a", fillColor: "#fbbf24", fillOpacity: .9 }).addTo(map);
-      focus.bindTooltip(lm.name + " · " + fmtKm(lm.km) + " km · " + at(lm.km), { permanent: true, direction: "top", offset: [0, -8], className: "km-tip end-tip" });
+      focus.bindTooltip(lm.name + " · " + fmtKm(lm.km) + " km · " + pairHtml(lm.km), { permanent: true, direction: "top", offset: [0, -8], className: "km-tip end-tip" });
       map.setView(c, Math.max(map.getZoom(), 15), { animate: true });
       document.getElementById("map").scrollIntoView({ behavior: "smooth", block: "center" });
     });
-    lm.cell = tr.children[2];
+    lm.cells = [tr.children[2], tr.children[3]];
     lmBody.appendChild(tr);
   });
 
@@ -338,20 +380,12 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
   })();
 
   function refreshTables() {
-    LMS.forEach(function (lm) { lm.cell.textContent = at(lm.km); });
-    etaRows.forEach(function (r) {
-      r.tr.children[1].textContent = hms(planTime(r.km));
-      r.tr.children[2].textContent = at(r.km);
-    });
+    var cs = [runnerCtx(0), runnerCtx(1)];
+    LMS.forEach(function (lm) { for (var j = 0; j < 2; j++) lm.cells[j].innerHTML = etaHtml(lm.km, cs[j]); });
+    etaRows.forEach(function (r) { for (var j = 0; j < 2; j++) r.tr.children[j + 1].innerHTML = etaHtml(r.km, cs[j]); });
   }
 
   // ---- plan position ("계획상 지금 위치") ----
-  var PLAN_COLOR = "#64748b";        // neutral grey: 진영's plan marker must not clash with either runner colour
-  // per-runner plan: r1 follows PACES and the page start (startSec); r2 is an even 3:25:00 (205*60/42.195 s/km)
-  var PLANS = {
-    r1: { segments: PACES, start: "07:33", label: "진영 계획", cmp: "계획", color: PLAN_COLOR },
-    r2: { segments: [[0, FULL, 205 * 60 / FULL]], start: "07:37", label: "기영 계획", cmp: "계획(3:25)", color: "#c4b5fd" }
-  };
   var planHidden = false;            // true once 진영 has real splits: the grey plan marker is dropped
   var planIcon = L.divIcon({ className: "", html: '<div class="pulse" style="--c:' + PLAN_COLOR + '"><i></i></div>', iconSize: [18, 18], iconAnchor: [9, 9] });
   var planMarker = null;
@@ -638,6 +672,7 @@ function segKm(segs, sec, full) {    // km reached after sec seconds of the plan
       if (!lead || km > lead.km) lead = pos[pos.length - 1];
     });
     if (planHidden !== hadHidden) updatePlan();
+    refreshMarks(); refreshTables();
     var close = pos.length === 2 && metres(pos[0].p, pos[1].p) < CLOSE_M;
     pos.forEach(function (q, n) {
       var label = q.km >= FULL - 0.005 ? q.name + " 도착" : q.name + " ~" + fmtKm(q.km) + " km";
