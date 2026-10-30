@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-10-30T16:07:01+09:00",
+ "updated_at": "2026-10-30T16:08:01+09:00",
  "source": "myresult",
  "runners": [
   {
@@ -12,76 +12,9 @@
   {
    "key": "r2",
    "name": "기영",
-   "start_clock": "08:14:46",
-   "splits": [
-    {
-     "point": "5K",
-     "km": 5.0,
-     "clock": "08:42:51",
-     "elapsed": "00:28:06"
-    },
-    {
-     "point": "10K",
-     "km": 10.0,
-     "clock": "09:10:43",
-     "elapsed": "00:55:58"
-    },
-    {
-     "point": "15K",
-     "km": 15.0,
-     "clock": "09:38:58",
-     "elapsed": "01:24:13"
-    },
-    {
-     "point": "20K",
-     "km": 20.0,
-     "clock": "10:07:17",
-     "elapsed": "01:52:32"
-    },
-    {
-     "point": "HALF",
-     "km": 21.0975,
-     "clock": "10:13:38",
-     "elapsed": "01:58:52"
-    },
-    {
-     "point": "25K",
-     "km": 25.0,
-     "clock": "10:36:46",
-     "elapsed": "02:22:01"
-    },
-    {
-     "point": "30K",
-     "km": 30.0,
-     "clock": "11:12:08",
-     "elapsed": "02:57:23"
-    },
-    {
-     "point": "35K",
-     "km": 35.0,
-     "clock": "11:49:27",
-     "elapsed": "03:34:42"
-    },
-    {
-     "point": "40K",
-     "km": 40.0,
-     "clock": "12:25:54",
-     "elapsed": "04:11:09"
-    },
-    {
-     "point": "TURN",
-     "km": 41.2,
-     "clock": "12:26:54",
-     "elapsed": "04:12:09"
-    },
-    {
-     "point": "FINISH",
-     "km": 42.195,
-     "clock": "12:39:27",
-     "elapsed": "04:24:42"
-    }
-   ],
-   "finished": true
+   "start_clock": null,
+   "splits": [],
+   "finished": false
   }
  ]
 }
