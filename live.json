@@ -1,11 +1,11 @@
 {
- "updated_at": "2026-10-30T16:08:01+09:00",
+ "updated_at": "2026-11-01T07:38:06+09:00",
  "source": "myresult",
  "runners": [
   {
    "key": "r1",
    "name": "진영",
-   "start_clock": null,
+   "start_clock": "07:37:15",
    "splits": [],
    "finished": false
   },
