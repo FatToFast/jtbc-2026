@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-01T07:38:06+09:00",
+ "updated_at": "2026-11-01T07:42:07+09:00",
  "source": "myresult",
  "runners": [
   {
@@ -12,7 +12,7 @@
   {
    "key": "r2",
    "name": "기영",
-   "start_clock": null,
+   "start_clock": "07:41:24",
    "splits": [],
    "finished": false
   }
