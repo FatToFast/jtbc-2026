@@ -1,12 +1,19 @@
 {
- "updated_at": "2026-11-01T07:42:07+09:00",
+ "updated_at": "2026-11-01T08:00:09+09:00",
  "source": "myresult",
  "runners": [
   {
    "key": "r1",
    "name": "진영",
    "start_clock": "07:37:15",
-   "splits": [],
+   "splits": [
+    {
+     "point": "5K",
+     "km": 5.0,
+     "clock": "07:59:12",
+     "elapsed": "00:21:58"
+    }
+   ],
    "finished": false
   },
   {
