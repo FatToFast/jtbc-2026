@@ -1,5 +1,5 @@
 {
- "updated_at": "2026-11-01T10:48:41+09:00",
+ "updated_at": "2026-11-01T10:51:42+09:00",
  "source": "myresult",
  "runners": [
   {
@@ -60,6 +60,12 @@
      "km": 40.0,
      "clock": "10:48:00",
      "elapsed": "03:10:46"
+    },
+    {
+     "point": "TURN",
+     "km": 41.2,
+     "clock": "10:51:22",
+     "elapsed": "03:14:07"
     }
    ],
    "finished": false
